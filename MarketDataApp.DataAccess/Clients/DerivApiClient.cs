@@ -223,7 +223,7 @@ public class DerivApiClient : IMarketApiClient
 
         return interval.ToLowerInvariant() switch
         {
-            "1m" => ("1m", "5d"),
+            "1m" => ("1m", "1d"),
             "2m" => ("2m", "30d"),
             "3m" => ("5m", "60d"),
             "5m" => ("5m", "60d"),

@@ -392,19 +392,25 @@
 
         /* COT YÜKLENİYOR DURUMU */
         .cot-loading-container {
-            grid-column: 1 / -1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 380px;
-            padding: 50px 20px;
+            width: 100%;
+            padding: 60px 20px;
             background: rgba(30, 34, 45, 0.7);
             border: 1px solid #363c4e;
             border-radius: 12px;
             text-align: center;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            margin-top: 20px;
+        }
+
+        /* Loading sırasında features flex'e döner */
+        .features.is-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .cot-spinner {
@@ -488,7 +494,7 @@
         </div>
     </div>
 
-    <div class="features" id="featuresContainer">
+    <div class="features is-loading" id="featuresContainer">
         <div class="cot-loading-container">
             <div class="cot-spinner"></div>
             <div class="cot-loading-title">Kurumsal COT Verileri Yükleniyor...</div>
@@ -705,6 +711,7 @@
 
         async function initCotBoard() {
             const container = document.getElementById("featuresContainer");
+            container.classList.add("is-loading");
             container.innerHTML = `
                 <div class="cot-loading-container">
                     <div class="cot-spinner"></div>
@@ -725,8 +732,10 @@
                         ? `Güncel (${reportDateStr})`
                         : `${currentWeeksAgo} Hf Önce (${reportDateStr})`;
                 }
+                container.classList.remove("is-loading");
                 renderCards();
             } catch (err) {
+                container.classList.remove("is-loading");
                 container.innerHTML = `
                     <div class="cot-loading-container" style="border-color: rgba(239, 83, 80, 0.4);">
                         <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>

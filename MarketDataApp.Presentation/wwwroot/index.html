@@ -595,74 +595,18 @@
         let livePollingTimer = null;
 
         function startLiveStream(symbol) {
+            // Önceki socket varsa kapat
             if (socket) {
                 try { socket.close(); } catch { }
                 socket = null;
             }
+            // Önceki polling varsa durdur
             if (livePollingTimer) {
                 clearInterval(livePollingTimer);
                 livePollingTimer = null;
             }
-
-            const derivSymbol = derivSymbols[symbol] || `frx${symbol}`;
-            document.getElementById("statusText").innerText = "Bağlanıyor...";
-
-            let socketConnected = false;
-
-            try {
-                socket = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
-
-                socket.onopen = () => {
-                    socketConnected = true;
-                    setConnectedStatus();
-                    socket.send(JSON.stringify({ ticks: derivSymbol, subscribe: 1, req_id: 1 }));
-                };
-
-                socket.onclose = () => {
-                    if (!socketConnected) {
-                        // Deriv WebSocket Türkiye'de ISP/BTK tarafından engellendiğinde otomatik REST canlı güncellemeye geç
-                        startRestLivePolling(symbol);
-                    } else {
-                        setDisconnectedStatus();
-                    }
-                };
-
-                socket.onerror = () => {
-                    startRestLivePolling(symbol);
-                };
-
-                socket.onmessage = event => {
-                    try {
-                        const message = JSON.parse(event.data);
-                        if (message.error || message.msg_type !== "tick" || !message.tick) return;
-
-                        const price = Number(message.tick.quote);
-                        const timestampSec = Number(message.tick.epoch);
-
-                        setConnectedStatus();
-                        if (!currentCandle) return;
-
-                        const candleBucket = getCandleBucketTime(timestampSec, currentInterval);
-
-                        if (candleBucket === currentCandle.time) {
-                            currentCandle.close = price;
-                            currentCandle.high = Math.max(currentCandle.high, price);
-                            currentCandle.low = Math.min(currentCandle.low, price);
-                            candleSeries.update(currentCandle);
-                        } else if (candleBucket > currentCandle.time) {
-                            currentCandle = {
-                                time: candleBucket,
-                                open: price, high: price, low: price, close: price
-                            };
-                            candleSeries.update(currentCandle);
-                        }
-
-                        updateOhlcLegend(currentCandle);
-                    } catch (error) { }
-                };
-            } catch (err) {
-                startRestLivePolling(symbol);
-            }
+            // Türkiye'de Deriv WebSocket engellendiği için doğrudan REST polling başlat
+            startRestLivePolling(symbol);
         }
 
         // Deriv WebSocket erişilemezse kesintisiz canlı güncelleme sağlayan alternatif yoklayıcı
