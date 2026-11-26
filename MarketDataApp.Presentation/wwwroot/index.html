@@ -592,52 +592,109 @@
             }
         }
 
+        let livePollingTimer = null;
+
         function startLiveStream(symbol) {
             if (socket) {
                 try { socket.close(); } catch { }
                 socket = null;
             }
+            if (livePollingTimer) {
+                clearInterval(livePollingTimer);
+                livePollingTimer = null;
+            }
 
-            const derivSymbol = derivSymbols[symbol];
+            const derivSymbol = derivSymbols[symbol] || `frx${symbol}`;
             document.getElementById("statusText").innerText = "Bağlanıyor...";
 
-            socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
+            let socketConnected = false;
 
-            socket.onopen = () => {
-                socket.send(JSON.stringify({ ticks: derivSymbol, subscribe: 1, req_id: 1 }));
-            };
+            try {
+                socket = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
 
-            socket.onclose = () => setDisconnectedStatus();
-
-            socket.onmessage = event => {
-                try {
-                    const message = JSON.parse(event.data);
-                    if (message.error || message.msg_type !== "tick" || !message.tick) return;
-
-                    const price = Number(message.tick.quote);
-                    const timestampSec = Number(message.tick.epoch);
-
+                socket.onopen = () => {
+                    socketConnected = true;
                     setConnectedStatus();
-                    if (!currentCandle) return;
+                    socket.send(JSON.stringify({ ticks: derivSymbol, subscribe: 1, req_id: 1 }));
+                };
 
-                    const candleBucket = getCandleBucketTime(timestampSec, currentInterval);
-
-                    if (candleBucket === currentCandle.time) {
-                        currentCandle.close = price;
-                        currentCandle.high = Math.max(currentCandle.high, price);
-                        currentCandle.low = Math.min(currentCandle.low, price);
-                        candleSeries.update(currentCandle);
-                    } else if (candleBucket > currentCandle.time) {
-                        currentCandle = {
-                            time: candleBucket,
-                            open: price, high: price, low: price, close: price
-                        };
-                        candleSeries.update(currentCandle);
+                socket.onclose = () => {
+                    if (!socketConnected) {
+                        // Deriv WebSocket Türkiye'de ISP/BTK tarafından engellendiğinde otomatik REST canlı güncellemeye geç
+                        startRestLivePolling(symbol);
+                    } else {
+                        setDisconnectedStatus();
                     }
+                };
 
-                    updateOhlcLegend(currentCandle);
-                } catch (error) { }
-            };
+                socket.onerror = () => {
+                    startRestLivePolling(symbol);
+                };
+
+                socket.onmessage = event => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.error || message.msg_type !== "tick" || !message.tick) return;
+
+                        const price = Number(message.tick.quote);
+                        const timestampSec = Number(message.tick.epoch);
+
+                        setConnectedStatus();
+                        if (!currentCandle) return;
+
+                        const candleBucket = getCandleBucketTime(timestampSec, currentInterval);
+
+                        if (candleBucket === currentCandle.time) {
+                            currentCandle.close = price;
+                            currentCandle.high = Math.max(currentCandle.high, price);
+                            currentCandle.low = Math.min(currentCandle.low, price);
+                            candleSeries.update(currentCandle);
+                        } else if (candleBucket > currentCandle.time) {
+                            currentCandle = {
+                                time: candleBucket,
+                                open: price, high: price, low: price, close: price
+                            };
+                            candleSeries.update(currentCandle);
+                        }
+
+                        updateOhlcLegend(currentCandle);
+                    } catch (error) { }
+                };
+            } catch (err) {
+                startRestLivePolling(symbol);
+            }
+        }
+
+        // Deriv WebSocket erişilemezse kesintisiz canlı güncelleme sağlayan alternatif yoklayıcı
+        function startRestLivePolling(symbol) {
+            if (livePollingTimer) clearInterval(livePollingTimer);
+            setConnectedStatus();
+            document.getElementById("statusText").innerText = "Canlı (Yedek Veri)";
+
+            livePollingTimer = setInterval(async () => {
+                if (currentSymbol !== symbol) return;
+                try {
+                    const url = `/api/market/candles?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(currentInterval)}&limit=2`;
+                    const res = await fetch(url);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        const latest = data[data.length - 1];
+                        const candle = {
+                            time: Number(latest.time),
+                            open: Number(latest.open),
+                            high: Number(latest.high),
+                            low: Number(latest.low),
+                            close: Number(latest.close)
+                        };
+                        currentCandle = candle;
+                        candleSeries.update(candle);
+                        updateOhlcLegend(candle);
+                        setConnectedStatus();
+                        document.getElementById("statusText").innerText = "Canlı";
+                    }
+                } catch { }
+            }, 4000);
         }
 
         async function startMarket() {

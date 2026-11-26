@@ -389,6 +389,68 @@
                 background: #2962ff;
                 color: #fff;
             }
+
+        /* COT YÜKLENİYOR DURUMU */
+        .cot-loading-container {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 380px;
+            padding: 50px 20px;
+            background: rgba(30, 34, 45, 0.7);
+            border: 1px solid #363c4e;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin-top: 20px;
+        }
+
+        .cot-spinner {
+            width: 52px;
+            height: 52px;
+            border: 4px solid rgba(41, 98, 255, 0.15);
+            border-top-color: #2962ff;
+            border-right-color: #00e5ff;
+            border-radius: 50%;
+            animation: cotSpin 0.85s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+            margin-bottom: 22px;
+        }
+
+        @keyframes cotSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .cot-loading-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+            letter-spacing: 0.3px;
+        }
+
+        .cot-loading-desc {
+            font-size: 14px;
+            color: #9aa0a6;
+            max-width: 480px;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        .cot-loading-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(41, 98, 255, 0.12);
+            border: 1px solid rgba(41, 98, 255, 0.3);
+            color: #82b1ff;
+            padding: 7px 18px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -426,7 +488,14 @@
         </div>
     </div>
 
-    <div class="features" id="featuresContainer"></div>
+    <div class="features" id="featuresContainer">
+        <div class="cot-loading-container">
+            <div class="cot-spinner"></div>
+            <div class="cot-loading-title">Kurumsal COT Verileri Yükleniyor...</div>
+            <div class="cot-loading-desc">Lütfen bekleyiniz, CFTC kurumsal pozisyonlanma ve piyasa verileri taranıyor.</div>
+            <div class="cot-loading-badge">⏳ Veriler getiriliyor, lütfen bekleyiniz...</div>
+        </div>
+    </div>
 
     <!-- GRAFİK MODALI -->
     <div class="modal-overlay" id="chartModal">
@@ -636,8 +705,17 @@
 
         async function initCotBoard() {
             const container = document.getElementById("featuresContainer");
+            container.innerHTML = `
+                <div class="cot-loading-container">
+                    <div class="cot-spinner"></div>
+                    <div class="cot-loading-title">Kurumsal COT Verileri Yükleniyor...</div>
+                    <div class="cot-loading-desc">Lütfen bekleyiniz, ${currentWeeksAgo === 0 ? "güncel hafta" : currentWeeksAgo + " hafta önceki"} CFTC kurumsal pozisyonlanma verileri taranıyor.</div>
+                    <div class="cot-loading-badge">⏳ Veriler getiriliyor, lütfen bekleyiniz...</div>
+                </div>
+            `;
             try {
                 const res = await fetch(`/api/cot/overview?weeksAgo=${currentWeeksAgo}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 cotDataCache = await res.json();
 
                 if (cotDataCache.length > 0) {
@@ -649,7 +727,14 @@
                 }
                 renderCards();
             } catch (err) {
-                container.innerHTML = `<p style="color:#ef5350;">Veri yüklenemedi: ${err.message}</p>`;
+                container.innerHTML = `
+                    <div class="cot-loading-container" style="border-color: rgba(239, 83, 80, 0.4);">
+                        <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
+                        <div class="cot-loading-title" style="color: #ef5350;">Veriler Yüklenirken Bir Hata Oluştu</div>
+                        <div class="cot-loading-desc">${err.message}</div>
+                        <button onclick="initCotBoard()" style="margin-top: 15px; background: #2962ff; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">Tekrar Dene</button>
+                    </div>
+                `;
             }
         }
 
