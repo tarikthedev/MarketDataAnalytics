@@ -1,0 +1,31 @@
+## .NET & Build Artifacts
+**/bin/
+**/obj/
+**/out/
+[Bb]uild/
+
+## Visual Studio & VS Code
+.vs/
+.vscode/
+*.user
+*.userprefs
+*.suo
+*.sln.docstates
+*.ide
+
+## Environment & Secrets
+**/appsettings.Development.json
+**/appsettings.*.local.json
+*.env
+*.env.*
+!*.env.example
+
+## Personal & Workspace Files
+CV.jpg
+Notlar.txt
+*.log
+
+## OS Generated
+[Dd]esktop.ini
+Thumbs.db
+.DS_Store

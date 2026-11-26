@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haftalık Ekonomik Takvim</title>
+    <link rel="stylesheet" href="/css/navbar.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #131722;
+            color: #d1d4dc;
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-bar {
+            padding: 0 20px;
+            margin: 0 auto 15px auto;
+            width: 100%;
+        }
+
+            .header-bar p {
+                color: #787b86;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+
+        .calendar-container {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            margin: 0 20px 20px 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: #2a2e39;
+            color: #787b86;
+            padding: 12px 15px;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #2a2e39;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .row-today {
+            background-color: rgba(38, 166, 154, 0.15) !important; /* Hafif transparan yeşil */
+            border-left: 4px solid #26a69a; /* Sol tarafa vurgu çizgisi */
+        }
+
+        .impact-high {
+            color: #ef5350;
+            font-weight: bold;
+            background: rgba(239,83,80,0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-wrapper-container">
+        <div class="nav-wrapper">
+            <nav class="main-nav">
+                <a href="/index.html">Canlı Grafik</a>
+                <a href="/cot.html">COT Analizi</a>
+                <a href="/seasonality.html">Mevsimsellik</a>
+                <a href="/squeeze.html">Sıkışma</a>
+                <a href="/calendar.html" class="active">Ekonomik Takvim</a>
+                <a href="/ai-agent.html">AI Makro Ajanı</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="header-bar">
+        <h2>📅 Haftalık Genel Ekonomik Takvim</h2>
+        <p>Piyasalara volatilite getirebilecek, bu hafta beklenen tüm <b>Yüksek Etkili (Kırmızı)</b> makroekonomik veriler aşağıda listelenmiştir.</p>
+    </div>
+
+    <div id="calendarContainer" class="calendar-container">
+        <!-- Günlük tablolar dinamik olarak buraya yüklenecek -->
+    </div>
+
+    <script>
+        function convertToTurkishTime(timeStr) {
+            if (!timeStr) return "";
+            const cleanStr = timeStr.trim().toLowerCase();
+            const isPm = cleanStr.includes('pm');
+            const isAm = cleanStr.includes('am');
+            const timePart = cleanStr.replace('am', '').replace('pm', '').trim();
+            const parts = timePart.split(':');
+            if (parts.length !== 2) return timeStr;
+
+            let hours = parseInt(parts[0], 10);
+            const minutes = parseInt(parts[1], 10);
+            if (isNaN(hours) || isNaN(minutes)) return timeStr;
+
+            if (isPm && hours < 12) hours += 12;
+            if (isAm && hours === 12) hours = 0;
+
+            hours += 3; // TRT farkı
+            if (hours >= 24) hours -= 24;
+            if (hours < 0) hours += 24;
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} (TRT)`;
+        }
+
+        function formatDateKey(d) {
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${mm}-${dd}-${yyyy}`;
+        }
+
+        function formatTurkishDate(dateStr) {
+            if (!dateStr) return "";
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const d = new Date(parts[2], parts[0] - 1, parts[1]);
+            return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long', year: 'numeric' });
+        }
+
+        async function fetchAllEvents() {
+            const container = document.getElementById('calendarContainer');
+            try {
+                const res = await fetch('/api/calendar/all');
+                const data = await res.json();
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `<p style="text-align:center; color:#787b86;">Görüntülenecek yüksek etkili haber bulunamadı.</p>`;
+                    return;
+                }
+
+                const groupedByDate = {};
+                data.forEach(item => {
+                    const dateKey = item.date || item.Date;
+                    if (!groupedByDate[dateKey]) {
+                        groupedByDate[dateKey] = [];
+                    }
+                    groupedByDate[dateKey].push(item);
+                });
+
+                const allDateKeys = Object.keys(groupedByDate);
+                allDateKeys.sort((a, b) => new Date(a) - new Date(b));
+
+                if (allDateKeys.length === 0) return;
+
+                const firstEventDate = new Date(allDateKeys[0]);
+                const day = firstEventDate.getDay();
+                const diffToMonday = firstEventDate.getDate() - day + (day === 0 ? -6 : 1);
+
+                const startDate = new Date(firstEventDate);
+                startDate.setDate(diffToMonday);
+                startDate.setHours(0, 0, 0, 0);
+
+                const lastEventDate = new Date(allDateKeys[allDateKeys.length - 1]);
+                const endDate = new Date(Math.max(lastEventDate.getTime(), startDate.getTime() + 6 * 24 * 60 * 60 * 1000));
+                endDate.setHours(0, 0, 0, 0);
+
+                const now = new Date();
+                const todayFormatted = formatDateKey(now);
+
+                let htmlContent = "";
+
+                let curr = new Date(startDate);
+                while (curr <= endDate) {
+                    // --- CUMARTESİ (6) VE PAZAR (0) GÜNLERİNİ LİSTEDEN TAMAMEN ATLA ---
+                    const dayOfWeek = curr.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        curr.setDate(curr.getDate() + 1);
+                        continue;
+                    }
+
+                    const dateStr = formatDateKey(curr);
+                    const events = groupedByDate[dateStr] || [];
+                    const isToday = dateStr === todayFormatted;
+
+                    const cardHighlightStyle = isToday ? "border: 2px solid #26a69a; background: rgba(38,166,154,0.05);" : "";
+                    const badgeToday = isToday ? `<span style="background:#26a69a; color:#fff; padding:2px 8px; border-radius:4px; font-size:12px; margin-left:10px;">BUGÜN</span>` : "";
+                    const turkceTarih = formatTurkishDate(dateStr);
+
+                    htmlContent += `
+                        <div style="background: #1e222d; border: 1px solid #363c4e; border-radius: 8px; margin-bottom: 20px; overflow: hidden; ${cardHighlightStyle}">
+                            <div style="background: #2a2e39; padding: 12px 20px; font-weight: bold; font-size: 16px; color: #fff; display:flex; align-items:center;">
+                                📅 ${turkceTarih} ${badgeToday}
+                            </div>
+                    `;
+
+                    if (events.length === 0) {
+                        htmlContent += `
+                            <div style="padding: 20px; text-align: center; color: #787b86; font-style: italic; font-size: 14px;">
+                                Bu gün için önemli veri bulunmamaktadır.
+                            </div>
+                        `;
+                    } else {
+                        htmlContent += `
+                            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #363c4e; color: #787b86; font-size: 12px;"> 
+                                        <th style="padding: 10px 15px;">SAAT</th>
+                                        <th style="padding: 10px 15px;">BİRİM</th>
+                                        <th style="padding: 10px 15px;">OLAY / HABER</th>
+                                        <th style="padding: 10px 15px;">BEKLENTİ</th>
+                                        <th style="padding: 10px 15px;">ÖNCEKİ</th>
+                                        <th style="padding: 10px 15px;">ETKİ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+
+                        events.forEach(item => {
+                            const rawTime = item.time || item.Time;
+                            const turkceSaat = convertToTurkishTime(rawTime);
+                            htmlContent += `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                                    <td style="padding: 12px 15px; color:#2962ff; font-weight:600;">${turkceSaat}</td>
+                                    <td style="padding: 12px 15px;"><strong style="font-size:15px;">${item.country || item.Country}</strong></td>
+                                    <td style="padding: 12px 15px; color:#fff; font-weight:500;">${item.title || item.Title}</td>
+                                    <td style="padding: 12px 15px; color:#26a69a;">${item.forecast || item.Forecast || "-"}</td>
+                                    <td style="padding: 12px 15px;">${item.previous || item.Previous || "-"}</td>
+                                    <td style="padding: 12px 15px;"><span style="color: #ef5350; background: rgba(239,83,80,0.1); padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight:bold;">YÜKSEK</span></td>
+                                </tr>
+                            `;
+                        });
+
+                        htmlContent += `
+                                </tbody>
+                            </table>
+                        `;
+                    }
+
+                    htmlContent += `</div>`;
+                    curr.setDate(curr.getDate() + 1);
+                }
+
+                container.innerHTML = htmlContent;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#ef5350;">Bağlantı hatası: ${err.message}</p>`;
+            }
+        }
+
+        fetchAllEvents();
+                                
+    </script>
+</body>
+</html>

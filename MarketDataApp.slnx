@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MarketDataApp.Business/MarketDataApp.Business.csproj" />
+  <Project Path="MarketDataApp.Core/MarketDataApp.Core.csproj" />
+  <Project Path="MarketDataApp.DataAccess/MarketDataApp.DataAccess.csproj" />
+  <Project Path="MarketDataApp.Presentation/MarketDataApp.Presentation.csproj" />
+</Solution>

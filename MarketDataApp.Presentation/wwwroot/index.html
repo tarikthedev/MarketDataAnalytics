@@ -1,0 +1,726 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Canlı Piyasa Grafiği</title>
+    <!-- Ortak Navbar CSS -->
+    <link rel="stylesheet" href="/css/navbar.css">
+    <!-- Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@5.0.1/dist/lightweight-charts.standalone.production.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #131722;
+            color: #d1d4dc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #2a2e39;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .symbol-search-container {
+            position: relative;
+        }
+
+        .tv-symbol-btn {
+            background: transparent;
+            color: #d1d4dc;
+            border: none;
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+            .tv-symbol-btn:hover {
+                background: #2a2e39;
+                color: #ffffff;
+            }
+
+        .symbol-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+            width: 280px;
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .symbol-popup.hidden {
+                display: none;
+            }
+
+        .search-box {
+            padding: 10px;
+            border-bottom: 1px solid #363c4e;
+        }
+
+            .search-box input {
+                width: 100%;
+                background: #131722;
+                border: 1px solid #363c4e;
+                color: #d1d4dc;
+                padding: 10px 12px;
+                border-radius: 6px;
+                outline: none;
+                font-size: 14px;
+            }
+
+                .search-box input:focus {
+                    border-color: #2962ff;
+                }
+
+        .symbol-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+            .symbol-list li {
+                padding: 12px 15px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            }
+
+                .symbol-list li:hover {
+                    background: #2a2e39;
+                }
+
+                .symbol-list li strong {
+                    font-size: 15px;
+                    width: 70px;
+                }
+
+                .symbol-list li span {
+                    color: #787b86;
+                    font-size: 12px;
+                    margin-left: 10px;
+                }
+
+            .symbol-list::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .symbol-list::-webkit-scrollbar-thumb {
+                background: #363c4e;
+                border-radius: 4px;
+            }
+
+        .tv-select {
+            background-color: transparent;
+            color: #d1d4dc;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+            .tv-select:hover {
+                background: #2a2e39;
+                color: #fff;
+            }
+
+            .tv-select option {
+                background-color: #1e222d;
+                color: #d1d4dc;
+            }
+
+        .status-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #ef5350;
+        }
+
+            .dot.connected {
+                background-color: #26a69a;
+                box-shadow: 0 0 6px #26a69a;
+            }
+
+        .chart-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+        }
+
+        #chart {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .ohlc-legend {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            z-index: 20;
+            font-size: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif;
+            pointer-events: none;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(19, 23, 34, 0.75);
+            padding: 4px 10px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+            .ohlc-legend .label {
+                color: #787b86;
+                margin-right: 2px;
+            }
+
+            .ohlc-legend .val {
+                font-weight: 600;
+            }
+
+            .ohlc-legend .up {
+                color: #26a69a;
+            }
+
+            .ohlc-legend .down {
+                color: #ef5350;
+            }
+    </style>
+</head>
+<body>
+
+    <!-- ORTAK NAVBAR -->
+    <div class="nav-wrapper-container">
+        <div class="nav-wrapper">
+            <nav class="main-nav">
+                <a href="/index.html" class="active">Canlı Grafik</a>
+                <a href="/cot.html">COT Analizi</a>
+                <a href="/seasonality.html">Mevsimsellik</a>
+                <a href="/squeeze.html">Sıkışma</a>
+                <a href="/calendar.html">Ekonomik Takvim</a>
+                <a href="/ai-agent.html">AI Makro Ajanı</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- TRADINGVIEW TOOLBAR -->
+    <div class="toolbar">
+        <div class="symbol-search-container">
+            <button id="symbolBtn" class="tv-symbol-btn">EURUSD</button>
+            <div id="symbolPopup" class="symbol-popup hidden">
+                <div class="search-box">
+                    <input type="text" id="symbolInput" placeholder="Sembol Ara (Örn: GBPUSD)..." autocomplete="off">
+                </div>
+                <ul id="symbolList" class="symbol-list"></ul>
+            </div>
+        </div>
+
+        <!-- 1W VE 1M EKLENDİ -->
+        <select id="intervalSelect" class="tv-select">
+            <option value="1m" selected>1m</option>
+            <option value="2m">2m</option>
+            <option value="3m">3m</option>
+            <option value="5m">5m</option>
+            <option value="10m">10m</option>
+            <option value="15m">15m</option>
+            <option value="30m">30m</option>
+            <option value="1h">1h</option>
+            <option value="2h">2h</option>
+            <option value="4h">4h</option>
+            <option value="8h">8h</option>
+            <option value="1d">1D</option>
+            <option value="1w">1W</option>
+            <option value="1M">1M</option>
+        </select>
+
+        <select id="timezoneSelect" class="tv-select">
+            <option value="local">Yerel Saat (Local)</option>
+            <option value="America/New_York" selected>New York (NY)</option>
+            <option value="Europe/London">London</option>
+            <option value="UTC">UTC</option>
+        </select>
+
+        <div class="status-badge">
+            <span id="statusDot" class="dot"></span>
+            <span id="statusText">Bağlanıyor...</span>
+        </div>
+    </div>
+
+    <!-- GRAFİK VE OHLC PANEL SARMALAYICI -->
+    <div class="chart-wrapper">
+        <div id="ohlcLegend" class="ohlc-legend">
+            <span><span class="label">A:</span><span id="valO" class="val">-</span></span>
+            <span><span class="label">Y:</span><span id="valH" class="val">-</span></span>
+            <span><span class="label">D:</span><span id="valL" class="val">-</span></span>
+            <span><span class="label">K:</span><span id="valC" class="val">-</span></span>
+            <span id="valDiff" class="val">-</span>
+        </div>
+        <div id="chart"></div>
+    </div>
+
+    <script>
+        const chartContainer = document.getElementById("chart");
+        let candleSeries = null;
+        let socket = null;
+        let currentCandle = null;
+
+        let currentSymbol = "EURUSD";
+        let currentInterval = "1m";
+        let currentTimezone = "America/New_York";
+        let currentPrecision = 5;
+
+        const derivSymbols = {
+            EURUSD: "frxEURUSD",
+            GBPUSD: "frxGBPUSD",
+            USDJPY: "frxUSDJPY",
+            AUDUSD: "frxAUDUSD",
+            NZDUSD: "frxNZDUSD",
+            USDCAD: "frxUSDCAD",
+            USDCHF: "frxUSDCHF",
+            XAUUSD: "frxXAUUSD",
+            XAGUSD: "frxXAGUSD",
+            BTCUSD: "cryBTCUSD",
+            US500: "OTC_SPC",
+            USTECH: "OTC_NDX",
+            R_100: "R_100"
+        };
+
+        const availableMarkets = [
+            { id: "EURUSD", name: "EURUSD", desc: "Euro / US Dollar" },
+            { id: "GBPUSD", name: "GBPUSD", desc: "British Pound / US Dollar" },
+            { id: "USDJPY", name: "USDJPY", desc: "US Dollar / Japanese Yen" },
+            { id: "AUDUSD", name: "AUDUSD", desc: "Australian Dollar / US Dollar" },
+            { id: "NZDUSD", name: "NZDUSD", desc: "New Zealand Dollar / US Dollar" },
+            { id: "USDCAD", name: "USDCAD", desc: "US Dollar / Canadian Dollar" },
+            { id: "USDCHF", name: "USDCHF", desc: "US Dollar / Swiss Franc" },
+            { id: "XAUUSD", name: "XAUUSD", desc: "Gold / US Dollar" },
+            { id: "XAGUSD", name: "XAGUSD", desc: "Silver / US Dollar" },
+            { id: "BTCUSD", name: "BTCUSD", desc: "Bitcoin / US Dollar" },
+            { id: "US500", name: "US500", desc: "US 500 Index (S&P)" },
+            { id: "USTECH", name: "USTECH", desc: "US Tech 100 (Nasdaq)" },
+            { id: "R_100", name: "R_100", desc: "Volatility 100 Index (7/24)" }
+        ];
+
+        // --- ARAMA POPUP ---
+        const symbolBtn = document.getElementById("symbolBtn");
+        const symbolPopup = document.getElementById("symbolPopup");
+        const symbolInput = document.getElementById("symbolInput");
+        const symbolList = document.getElementById("symbolList");
+
+        symbolBtn.addEventListener("click", () => {
+            symbolPopup.classList.toggle("hidden");
+            if (!symbolPopup.classList.contains("hidden")) {
+                symbolInput.value = "";
+                renderSymbolList(availableMarkets);
+                symbolInput.focus();
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!symbolBtn.contains(e.target) && !symbolPopup.contains(e.target)) {
+                symbolPopup.classList.add("hidden");
+            }
+        });
+
+        symbolInput.addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = availableMarkets.filter(s =>
+                s.name.toLowerCase().includes(query) ||
+                s.desc.toLowerCase().includes(query)
+            );
+            renderSymbolList(filtered);
+        });
+
+        function renderSymbolList(list) {
+            symbolList.innerHTML = "";
+            list.forEach(item => {
+                const li = document.createElement("li");
+                li.innerHTML = `<strong>${item.name}</strong> <span>${item.desc}</span>`;
+
+                li.addEventListener("click", () => {
+                    currentSymbol = item.id;
+                    symbolBtn.innerText = item.name;
+                    symbolPopup.classList.add("hidden");
+                    startMarket();
+                });
+
+                symbolList.appendChild(li);
+            });
+        }
+
+        // --- OHLC VE PIPS GÜNCELLEME ---
+        const valO = document.getElementById("valO");
+        const valH = document.getElementById("valH");
+        const valL = document.getElementById("valL");
+        const valC = document.getElementById("valC");
+        const valDiff = document.getElementById("valDiff");
+
+        function updateOhlcLegend(candle) {
+            if (!candle) return;
+
+            const open = Number(candle.open);
+            const high = Number(candle.high);
+            const low = Number(candle.low);
+            const close = Number(candle.close);
+
+            valO.innerText = open.toFixed(currentPrecision);
+            valH.innerText = high.toFixed(currentPrecision);
+            valL.innerText = low.toFixed(currentPrecision);
+            valC.innerText = close.toFixed(currentPrecision);
+
+            const diff = close - open;
+            const pct = open !== 0 ? (diff / open) * 100 : 0;
+            const sign = diff >= 0 ? "+" : "";
+            const colorClass = diff >= 0 ? "up" : "down";
+
+            let pipText = "";
+            const isJpy = currentSymbol.includes("JPY");
+            const isForex = ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF"].includes(currentSymbol);
+
+            if (isForex) {
+                const pips = (diff / 0.0001).toFixed(1);
+                pipText = ` (${sign}${pips} pips)`;
+            } else if (isJpy) {
+                const pips = (diff / 0.01).toFixed(1);
+                pipText = ` (${sign}${pips} pips)`;
+            }
+
+            valDiff.innerHTML = `${sign}${diff.toFixed(currentPrecision)}${pipText} (${sign}${pct.toFixed(2)}%)`;
+
+            [valO, valH, valL, valC, valDiff].forEach(el => {
+                el.className = `val ${colorClass}`;
+            });
+        }
+
+        // --- ZAMAN FORMATLAYICILARI (1D, 1W, 1M DAHİL) ---
+        function isHighTimeframe(interval) {
+            return ["1d", "1w", "1M"].includes(interval);
+        }
+
+        function formatTimeTooltip(time, tz, interval) {
+            const date = new Date(time * 1000);
+            if (interval === "1M") {
+                return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+            }
+            if (interval === "1w") {
+                return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) + " Haftası";
+            }
+            if (interval === "1d") {
+                return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+            }
+            return date.toLocaleString('tr-TR', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false,
+                timeZone: tz === 'local' ? undefined : tz
+            });
+        }
+
+        function formatTickMark(time, tickMarkType, tz, interval) {
+            const date = new Date(time * 1000);
+            const timeZoneOpt = isHighTimeframe(interval) ? 'UTC' : (tz === 'local' ? undefined : tz);
+
+            switch (tickMarkType) {
+                case 0:
+                    return date.toLocaleDateString('tr-TR', { year: 'numeric', timeZone: timeZoneOpt });
+                case 1:
+                    return date.toLocaleDateString('tr-TR', { month: 'short', timeZone: timeZoneOpt });
+                case 2:
+                    return date.toLocaleDateString('tr-TR', { day: 'numeric', timeZone: timeZoneOpt });
+                case 3:
+                case 4:
+                    return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timeZoneOpt });
+                default:
+                    return null;
+            }
+        }
+
+        // --- CANLI MUM BUCKET HESAPLAYICI (1W VE 1M DESTEKLİ) ---
+        function getCandleBucketTime(timestampSec, interval) {
+            const date = new Date(timestampSec * 1000);
+
+            if (interval === "1w") {
+                const day = date.getUTCDay();
+                const diff = (day === 0 ? -6 : 1) - day;
+                date.setUTCDate(date.getUTCDate() + diff);
+                date.setUTCHours(0, 0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            }
+            if (interval === "1M") {
+                date.setUTCDate(1);
+                date.setUTCHours(0, 0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            }
+
+            const secMap = {
+                "1m": 60, "2m": 120, "3m": 180, "5m": 300,
+                "10m": 600, "15m": 900, "30m": 1800,
+                "1h": 3600, "2h": 7200, "4h": 14400, "8h": 28800,
+                "1d": 86400
+            };
+            const sec = secMap[interval] || 60;
+            return Math.floor(timestampSec / sec) * sec;
+        }
+
+        // --- CHART OLUŞTURMA ---
+        const chart = LightweightCharts.createChart(chartContainer, {
+            layout: {
+                background: { type: "solid", color: "#131722" },
+                textColor: "#d1d4dc"
+            },
+            grid: {
+                vertLines: { color: "#242732" },
+                horzLines: { color: "#242732" }
+            },
+            localization: {
+                locale: 'tr-TR',
+                timeFormatter: (time) => formatTimeTooltip(time, currentTimezone, currentInterval)
+            },
+            timeScale: {
+                timeVisible: true,
+                secondsVisible: false,
+                rightOffset: 5,
+                tickMarkFormatter: (time, tickMarkType) => formatTickMark(time, tickMarkType, currentTimezone, currentInterval)
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal
+            }
+        });
+
+        candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: "#26a69a",
+            downColor: "#ef5350",
+            borderVisible: false,
+            wickUpColor: "#26a69a",
+            wickDownColor: "#ef5350"
+        });
+
+        chart.subscribeCrosshairMove(param => {
+            if (!param || !param.time || !param.seriesData) {
+                if (currentCandle) updateOhlcLegend(currentCandle);
+                return;
+            }
+            const data = param.seriesData.get(candleSeries);
+            if (data) {
+                updateOhlcLegend(data);
+            } else if (currentCandle) {
+                updateOhlcLegend(currentCandle);
+            }
+        });
+
+        function setConnectedStatus() {
+            document.getElementById("statusDot").classList.add("connected");
+            document.getElementById("statusText").innerText = "Canlı";
+        }
+
+        function setDisconnectedStatus() {
+            document.getElementById("statusDot").classList.remove("connected");
+            document.getElementById("statusText").innerText = "Koptu";
+        }
+
+        async function loadHistoricalCandles(symbol, interval) {
+            const url = `/api/market/candles?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=5000`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) return false;
+
+                data.sort((a, b) => Number(a.time) - Number(b.time));
+
+                const formattedData = data.map(c => ({
+                    time: Number(c.time),
+                    open: Number(c.open),
+                    high: Number(c.high),
+                    low: Number(c.low),
+                    close: Number(c.close)
+                }));
+
+                candleSeries.setData(formattedData);
+                currentCandle = { ...formattedData[formattedData.length - 1] };
+                updateOhlcLegend(currentCandle);
+
+                chart.timeScale().fitContent();
+                return true;
+            } catch (error) {
+                console.error("[HISTORY ERROR]", error);
+                document.getElementById("statusText").innerText = "Veri Yok";
+                return false;
+            }
+        }
+
+        function startLiveStream(symbol) {
+            if (socket) {
+                try { socket.close(); } catch { }
+                socket = null;
+            }
+
+            const derivSymbol = derivSymbols[symbol];
+            document.getElementById("statusText").innerText = "Bağlanıyor...";
+
+            socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
+
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ ticks: derivSymbol, subscribe: 1, req_id: 1 }));
+            };
+
+            socket.onclose = () => setDisconnectedStatus();
+
+            socket.onmessage = event => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.error || message.msg_type !== "tick" || !message.tick) return;
+
+                    const price = Number(message.tick.quote);
+                    const timestampSec = Number(message.tick.epoch);
+
+                    setConnectedStatus();
+                    if (!currentCandle) return;
+
+                    const candleBucket = getCandleBucketTime(timestampSec, currentInterval);
+
+                    if (candleBucket === currentCandle.time) {
+                        currentCandle.close = price;
+                        currentCandle.high = Math.max(currentCandle.high, price);
+                        currentCandle.low = Math.min(currentCandle.low, price);
+                        candleSeries.update(currentCandle);
+                    } else if (candleBucket > currentCandle.time) {
+                        currentCandle = {
+                            time: candleBucket,
+                            open: price, high: price, low: price, close: price
+                        };
+                        candleSeries.update(currentCandle);
+                    }
+
+                    updateOhlcLegend(currentCandle);
+                } catch (error) { }
+            };
+        }
+
+        async function startMarket() {
+            currentInterval = document.getElementById("intervalSelect").value;
+
+            if (socket) {
+                try { socket.close(); } catch { }
+                socket = null;
+            }
+
+            currentCandle = null;
+
+            currentPrecision = 5;
+            let minMove = 0.00001;
+
+            if (currentSymbol.includes("JPY")) {
+                currentPrecision = 3;
+                minMove = 0.001;
+            } else if (["BTCUSD", "US500", "USTECH", "R_100"].includes(currentSymbol)) {
+                currentPrecision = 2;
+                minMove = 0.01;
+            }
+
+            const isHTF = isHighTimeframe(currentInterval);
+
+            chart.applyOptions({
+                localization: {
+                    priceFormatter: price => price.toFixed(currentPrecision),
+                    timeFormatter: (time) => formatTimeTooltip(time, currentTimezone, currentInterval)
+                },
+                timeScale: {
+                    timeVisible: !isHTF,
+                    secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType) => formatTickMark(time, tickMarkType, currentTimezone, currentInterval)
+                }
+            });
+
+            candleSeries.applyOptions({
+                priceFormat: {
+                    type: "price",
+                    precision: currentPrecision,
+                    minMove: minMove
+                }
+            });
+
+            const historyLoaded = await loadHistoricalCandles(currentSymbol, currentInterval);
+            if (historyLoaded) {
+                startLiveStream(currentSymbol);
+            }
+        }
+
+        document.getElementById("intervalSelect").addEventListener("change", startMarket);
+
+        document.getElementById("timezoneSelect").addEventListener("change", (e) => {
+            currentTimezone = e.target.value;
+            const isHTF = isHighTimeframe(currentInterval);
+            chart.applyOptions({
+                localization: {
+                    timeFormatter: (time) => formatTimeTooltip(time, currentTimezone, currentInterval)
+                },
+                timeScale: {
+                    timeVisible: !isHTF,
+                    tickMarkFormatter: (time, tickMarkType) => formatTickMark(time, tickMarkType, currentTimezone, currentInterval)
+                }
+            });
+        });
+
+        window.addEventListener("resize", () => {
+            chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+        });
+
+        // --- URL'DEN GELEN PARİTEYİ YAKALA (Sıkışma sayfasından vs. gelindiğinde) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSymbol = urlParams.get('symbol');
+
+        if (urlSymbol && derivSymbols[urlSymbol]) {
+            currentSymbol = urlSymbol.toUpperCase();
+            document.getElementById("symbolBtn").innerText = currentSymbol;
+        }
+
+        // --- SİSTEMİ BAŞLAT ---
+        startMarket();
+
+    </script>
+</body>
+</html>

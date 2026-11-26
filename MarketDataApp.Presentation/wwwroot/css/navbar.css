@@ -1,0 +1,60 @@
+﻿@import url('https://fonts.bunny.net/css?family=jura:300,500,700');
+
+:root {
+    --nav-indicator-hover: rgba(0, 105, 168, 0.4);
+    --nav-indicator-active: #2962ff;
+    --nav-bg: #131315;
+    --nav-link-color: #d1d4dc;
+    --nav-link-color-active: #ffffff;
+    --nav-padding: 4px;
+    --nav-border-radius: 999vw;
+    --nav-lines: rgba(255, 255, 255, 0.15);
+}
+
+.nav-wrapper-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    z-index: 100;
+}
+
+.nav-wrapper {
+    position: relative;
+    border: 1px solid var(--nav-lines);
+    border-radius: var(--nav-border-radius);
+    width: fit-content;
+    padding: var(--nav-padding);
+    background-color: var(--nav-bg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+nav.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+    nav.main-nav > a {
+        display: block;
+        padding: 0.5em 1.2em;
+        text-decoration: none;
+        color: var(--nav-link-color);
+        font-family: 'Jura', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: var(--nav-border-radius);
+        transition: all 250ms ease;
+    }
+
+        nav.main-nav > a:hover {
+            background: var(--nav-indicator-hover);
+            color: #ffffff;
+        }
+
+        nav.main-nav > a.active {
+            background: var(--nav-indicator-active);
+            color: var(--nav-link-color-active);
+            box-shadow: 0 0 12px rgba(41, 98, 255, 0.6);
+        }

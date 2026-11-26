@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Makro & Confluence Ajanı</title>
+    <link rel="stylesheet" href="/css/navbar.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #131722;
+            color: #d1d4dc;
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 20px;
+            margin: 0 auto 15px auto;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+            width: 100%;
+            padding: 0 20px 20px 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* SOL PANEL: PARİTE SEÇİMİ */
+        .pairs-panel {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+            .pairs-panel h3 {
+                margin: 0 0 10px 0;
+                font-size: 16px;
+                border-bottom: 1px solid #2a2e39;
+                padding-bottom: 8px;
+            }
+
+        .pair-btn {
+            background: #131722;
+            border: 1px solid #2a2e39;
+            color: #d1d4dc;
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+            .pair-btn:hover {
+                border-color: #2962ff;
+                background: rgba(41, 98, 255, 0.05);
+            }
+
+            .pair-btn.active {
+                border-color: #2962ff;
+                background: #2962ff;
+                color: #fff;
+            }
+
+        /* SAĞ PANEL: AI RAPOR ALANI */
+        .report-panel {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2e39;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ai-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-analyze {
+            background: #2962ff;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            .btn-analyze:hover {
+                background: #1e4bd8;
+            }
+
+            .btn-analyze:disabled {
+                background: #363c4e;
+                cursor: not-allowed;
+            }
+
+        .report-content {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #d1d4dc;
+        }
+
+            .report-content h3 {
+                color: #2962ff;
+                margin-top: 0;
+            }
+
+            .report-content p {
+                margin-bottom: 12px;
+            }
+
+            .report-content b {
+                color: #fff;
+            }
+
+        .placeholder-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #787b86;
+            text-align: center;
+            gap: 10px;
+        }
+
+        .loader {
+            border: 3px solid #1e222d;
+            border-top: 3px solid #2962ff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .pairs-panel::-webkit-scrollbar, .report-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .pairs-panel::-webkit-scrollbar-thumb, .report-panel::-webkit-scrollbar-thumb {
+            background: #363c4e;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-wrapper-container">
+        <div class="nav-wrapper">
+            <nav class="main-nav">
+                <a href="/index.html">Canlı Grafik</a>
+                <a href="/cot.html">COT Analizi</a>
+                <a href="/seasonality.html">Mevsimsellik</a>
+                <a href="/squeeze.html">Sıkışma</a>
+                <a href="/calendar.html">Ekonomik Takvim</a>
+                <a href="/ai-agent.html" class="active">AI Makro Ajanı</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="header-bar">
+        <div>
+            <h2 style="margin:0; font-size:20px; font-weight:600;">🤖 Kurumsal AI Makro & Kesişim Motoru</h2>
+            <span style="color:#787b86; font-size:13px;">COT Pozisyonları + Sıkışma + Ekonomik Takvim Sentezi</span>
+        </div>
+    </div>
+
+    <div class="layout-grid">
+        <!-- SOL LİSTE -->
+        <div class="pairs-panel">
+            <h3>Piyasa Seçimi</h3>
+            <div id="pairsList" style="display:flex; flex-direction:column; gap:8px;">
+                <!-- JS ile dinamik gelecek -->
+            </div>
+        </div>
+
+        <!-- SAĞ RAPOR EKRANI -->
+        <div class="report-panel" id="reportPanel">
+            <div class="ai-header">
+                <div class="ai-title">
+                    <span id="selectedPairTitle">EURUSD</span>
+                    <span style="font-size:12px; color:#787b86; font-weight:normal;" id="selectedPairDesc">Euro / US Dollar</span>
+                </div>
+                <button id="btnGenerate" class="btn-analyze" onclick="runAiAnalysis()">Analiz Et & Raporla ⚡</button>
+            </div>
+
+            <div id="reportContent" class="report-content">
+                <div class="placeholder-box">
+                    <span style="font-size: 32px;">🧠</span>
+                    <p>
+                        Sol taraftan bir parite seçip <b>"Analiz Et & Raporla"</b> butonuna basınız.<br>
+                        Yapay zeka tüm kurumsal ve haber verilerini birleştirerek trade hipotezi çıkartacaktır.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pairs = [
+            { symbol: "EURUSD", name: "Euro / US Dollar" },
+            { symbol: "GBPUSD", name: "British Pound / US Dollar" },
+            { symbol: "USDJPY", name: "US Dollar / Japanese Yen" },
+            { symbol: "AUDUSD", name: "Australian Dollar / US Dollar" },
+            { symbol: "NZDUSD", name: "New Zealand Dollar / US Dollar" },
+            { symbol: "USDCAD", name: "US Dollar / Canadian Dollar" },
+            { symbol: "USDCHF", name: "US Dollar / Swiss Franc" },
+            { symbol: "XAUUSD", name: "Gold / US Dollar" },
+            { symbol: "BTCUSD", name: "Bitcoin / US Dollar" }
+        ];
+
+        let currentSymbol = "EURUSD";
+
+        function renderPairs() {
+            const list = document.getElementById("pairsList");
+            list.innerHTML = pairs.map(p => `
+                <button class="pair-btn ${p.symbol === currentSymbol ? 'active' : ''}" onclick="selectPair('${p.symbol}', '${p.name}')">
+                    <span>${p.symbol}</span>
+                    <span style="font-size:11px; opacity:0.6;">${p.name}</span>
+                </button>
+            `).join('');
+        }
+
+        function selectPair(symbol, name) {
+            currentSymbol = symbol;
+            document.getElementById("selectedPairTitle").innerText = symbol;
+            document.getElementById("selectedPairDesc").innerText = name;
+            renderPairs();
+
+            document.getElementById("reportContent").innerHTML = `
+                <div class="placeholder-box">
+                    <span style="font-size: 32px;">⚡</span>
+                    <p><b>${symbol}</b> seçildi. Analizi başlatmak için yukarıdaki butona tıklayın.</p>
+                </div>
+            `;
+        }
+
+        async function runAiAnalysis() {
+            const btn = document.getElementById("btnGenerate");
+            const content = document.getElementById("reportContent");
+
+            btn.disabled = true;
+            content.innerHTML = `
+                <div class="placeholder-box">
+                    <div class="loader"></div>
+                    <p>Sıkışma, COT ve Forex Factory haber verileri sentezleniyor...<br>
+                    <span style="font-size:12px; color:#787b86;">Yapay zeka kurumsal rapor hazırlıyor, lütfen bekleyiniz.</span></p>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`/api/ai/analyze?symbol=${currentSymbol}`);
+                const data = await res.json();
+
+                if (!res.ok || data.error) throw new Error(data.error || "Hata oluştu.");
+
+                content.innerHTML = data.reportHtml;
+            } catch (err) {
+                content.innerHTML = `
+                    <div style="color:#ef5350; padding:20px; background:rgba(239, 83, 80, 0.1); border-radius:6px;">
+                        <b>Analiz Başarısız:</b> ${err.message}<br>
+                        <small>Lütfen API Anahtarınızı ve internet bağlantınızı kontrol ediniz.</small>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        renderPairs();
+    </script>
+</body>
+</html>

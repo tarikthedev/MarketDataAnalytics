@@ -1,0 +1,841 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mevsimsellik & Kesişim Analizi</title>
+    <link rel="stylesheet" href="/css/navbar.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #131722;
+            color: #d1d4dc;
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            padding: 0 20px;
+            margin: 0 auto 20px auto;
+            align-items: center;
+        }
+
+        .symbol-search-container {
+            position: relative;
+        }
+
+        .tv-symbol-btn {
+            background: transparent;
+            color: #d1d4dc;
+            border: none;
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+            .tv-symbol-btn:hover {
+                background: #2a2e39;
+                color: #ffffff;
+            }
+
+        .symbol-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+            width: 280px;
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .symbol-popup.hidden {
+                display: none;
+            }
+
+        .search-box {
+            padding: 10px;
+            border-bottom: 1px solid #363c4e;
+        }
+
+            .search-box input {
+                width: 100%;
+                background: #131722;
+                border: 1px solid #363c4e;
+                color: #d1d4dc;
+                padding: 10px 12px;
+                border-radius: 6px;
+                outline: none;
+                font-size: 14px;
+            }
+
+                .search-box input:focus {
+                    border-color: #2962ff;
+                }
+
+        .symbol-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+            .symbol-list li {
+                padding: 12px 15px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            }
+
+                .symbol-list li:hover {
+                    background: #2a2e39;
+                }
+
+                .symbol-list li strong {
+                    font-size: 15px;
+                    width: 70px;
+                }
+
+                .symbol-list li span {
+                    color: #787b86;
+                    font-size: 12px;
+                    margin-left: 10px;
+                }
+
+            .symbol-list::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .symbol-list::-webkit-scrollbar-thumb {
+                background: #363c4e;
+                border-radius: 4px;
+            }
+
+        .timeframe-selectors {
+            display: flex;
+            align-items: center;
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            padding: 0 15px;
+            border-radius: 6px;
+            height: 39px;
+        }
+
+        .tf-cb {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #d1d4dc;
+            cursor: pointer;
+            margin-right: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+            .tf-cb input {
+                cursor: pointer;
+                accent-color: #2962ff;
+                width: 16px;
+                height: 16px;
+                margin: 0;
+            }
+
+            .tf-cb:last-child {
+                margin-right: 0;
+            }
+
+   
+        .content-grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            width: 100%;
+            padding: 0 20px 20px 20px;
+            flex: 1;
+            min-height: 0;
+            min-width: 0; 
+        }
+
+            .content-grid.hide-confluence {
+                grid-template-columns: 1fr;
+            }
+
+                .content-grid.hide-confluence .confluence-panel {
+                    display: none !important;
+                }
+
+   
+        .chart-container {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            width: 100%;
+        }
+
+   
+        .canvas-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .confluence-panel {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+            .confluence-panel h3 {
+                margin-top: 0;
+                border-bottom: 1px solid #363c4e;
+                padding-bottom: 10px;
+                font-size: 16px;
+            }
+
+        .conf-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #787b86;
+        }
+
+            .conf-item.Bullish {
+                border-color: #26a69a;
+            }
+
+            .conf-item.Bearish {
+                border-color: #ef5350;
+            }
+
+            .conf-item strong {
+                display: block;
+                font-size: 15px;
+                margin-bottom: 5px;
+            }
+
+            .conf-item span {
+                font-size: 12px;
+                color: #787b86;
+                line-height: 1.4;
+                display: block;
+            }
+
+        .confluence-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .confluence-panel::-webkit-scrollbar-thumb {
+            background: #363c4e;
+            border-radius: 4px;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+            padding-left: 15px;
+            border-left: 1px solid #363c4e;
+        }
+
+        .switch-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #d1d4dc;
+            cursor: pointer;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #363c4e;
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 18px;
+                width: 18px;
+                left: 3px;
+                bottom: 3px;
+                background-color: #d1d4dc;
+                transition: .3s;
+                border-radius: 50%;
+            }
+
+        input:checked + .slider {
+            background-color: #2962ff;
+        }
+
+            input:checked + .slider:before {
+                transform: translateX(20px);
+                background-color: #fff;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="nav-wrapper-container">
+        <div class="nav-wrapper">
+            <nav class="main-nav">
+                <a href="/index.html">Canlı Grafik</a>
+                <a href="/cot.html">COT Analizi</a>
+                <a href="/seasonality.html" class="active">Mevsimsellik</a>
+                <a href="/squeeze.html">Sıkışma</a>
+                <a href="/calendar.html">Ekonomik Takvim</a>
+                <a href="/ai-agent.html">AI Makro Ajanı</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="top-bar">
+        <div class="symbol-search-container">
+            <button id="symbolBtn" class="tv-symbol-btn">EURUSD</button>
+            <div id="symbolPopup" class="symbol-popup hidden">
+                <div class="search-box">
+                    <input type="text" id="symbolInput" placeholder="Sembol Ara..." autocomplete="off">
+                </div>
+                <ul id="symbolList" class="symbol-list"></ul>
+            </div>
+        </div>
+
+        <div class="timeframe-selectors">
+            <span style="color:#787b86; font-size: 12px; margin-right:15px; text-transform:uppercase; letter-spacing:1px;">Kesişim:</span>
+            <label class="tf-cb"><input type="checkbox" class="tf-checkbox" value="fiveYear"> 5 Yıl</label>
+            <label class="tf-cb"><input type="checkbox" class="tf-checkbox" value="tenYear" checked> 10 Yıl</label>
+            <label class="tf-cb"><input type="checkbox" class="tf-checkbox" value="twentyYear" checked> 20 Yıl</label>
+        </div>
+
+        <div class="switch-container">
+            <label class="switch-label" for="confluenceToggle">Kesişim Paneli</label>
+            <label class="switch">
+                <input type="checkbox" id="confluenceToggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="chart-container">
+            <!-- GRAFİK ARTIK BU DİV'İN İÇİNE HAPSOLD, TAŞAMAZ! -->
+            <div class="canvas-wrapper">
+                <canvas id="seasonalityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="confluence-panel">
+            <h3>🔥 Algoritmik Fırsat Aralıkları</h3>
+            <!-- EKLENEN YENİ UYARI BANNERI -->
+            <div id="currentStatusBanner" style="padding: 10px; margin-bottom: 15px; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.05); color:#787b86;">
+                Durum Taranıyor...
+            </div>
+
+            <div id="confluenceList">
+                <p style="color: #787b86; font-size: 14px;">Sembol seçip yükleyiniz...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartInstance = null;
+        let seasonalDataCache = null;
+        let currentSymbol = "EURUSD";
+        let activeConfluences = [];
+
+        const configMap = {
+            "fiveYear": { label: "Son 5 Yıl", color: "#2962ff", short: "5Y" },
+            "tenYear": { label: "Son 10 Yıl", color: "#ff9800", short: "10Y" },
+            "twentyYear": { label: "Son 20 Yıl", color: "#26a69a", short: "20Y" }
+        };
+
+        const availableMarkets = [
+            { id: "EURUSD", name: "EURUSD", desc: "Euro / US Dollar" },
+            { id: "GBPUSD", name: "GBPUSD", desc: "British Pound / US Dollar" },
+            { id: "USDJPY", name: "USDJPY", desc: "US Dollar / Japanese Yen" },
+            { id: "AUDUSD", name: "AUDUSD", desc: "Australian Dollar / US Dollar" },
+            { id: "NZDUSD", name: "NZDUSD", desc: "New Zealand Dollar / US Dollar" },
+            { id: "USDCAD", name: "USDCAD", desc: "US Dollar / Canadian Dollar" },
+            { id: "USDCHF", name: "USDCHF", desc: "US Dollar / Swiss Franc" },
+            { id: "XAUUSD", name: "XAUUSD", desc: "Gold / US Dollar" },
+            { id: "XAGUSD", name: "XAGUSD", desc: "Silver / US Dollar" },
+            { id: "BTCUSD", name: "BTCUSD", desc: "Bitcoin / US Dollar" },
+            { id: "US500", name: "US500", desc: "US 500 Index (S&P)" },
+            { id: "USTECH", name: "USTECH", desc: "US Tech 100 (Nasdaq)" }
+        ];
+
+        const symbolBtn = document.getElementById("symbolBtn");
+        const symbolPopup = document.getElementById("symbolPopup");
+        const symbolInput = document.getElementById("symbolInput");
+        const symbolList = document.getElementById("symbolList");
+
+        symbolBtn.addEventListener("click", () => {
+            symbolPopup.classList.toggle("hidden");
+            if (!symbolPopup.classList.contains("hidden")) {
+                symbolInput.value = "";
+                renderSymbolList(availableMarkets);
+                symbolInput.focus();
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!symbolBtn.contains(e.target) && !symbolPopup.contains(e.target)) {
+                symbolPopup.classList.add("hidden");
+            }
+        });
+
+        symbolInput.addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = availableMarkets.filter(s =>
+                s.name.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query)
+            );
+            renderSymbolList(filtered);
+        });
+
+        function renderSymbolList(list) {
+            symbolList.innerHTML = "";
+            list.forEach(item => {
+                const li = document.createElement("li");
+                li.innerHTML = `<strong>${item.name}</strong> <span>${item.desc}</span>`;
+                li.addEventListener("click", () => {
+                    currentSymbol = item.id;
+                    symbolBtn.innerText = item.name;
+                    symbolPopup.classList.add("hidden");
+                    fetchSeasonalityData();
+                });
+                symbolList.appendChild(li);
+            });
+        }
+
+        const backgroundHighlightPlugin = {
+            id: 'backgroundHighlight',
+            beforeDraw: (chart) => {
+                if (!chart.config.data.confluences || chart.config.data.confluences.length === 0) return;
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const chartArea = chart.chartArea;
+
+                chart.config.data.confluences.forEach(conf => {
+                    const startIndex = chart.data.labels.indexOf(conf.startKey);
+                    const endIndex = chart.data.labels.indexOf(conf.endKey);
+
+                    if (startIndex !== -1 && endIndex !== -1) {
+                        const startX = xAxis.getPixelForValue(startIndex);
+                        const endX = xAxis.getPixelForValue(endIndex);
+                        ctx.save();
+                        ctx.fillStyle = conf.bias === "Bullish" ? "rgba(38, 166, 154, 0.15)" : "rgba(239, 83, 80, 0.15)";
+                        ctx.fillRect(startX, chartArea.top, endX - startX, chartArea.bottom - chartArea.top);
+                        ctx.restore();
+                    }
+                });
+            }
+        };
+
+        const currentDayMarkerPlugin = {
+            id: 'currentDayMarker',
+            afterDraw: (chart) => {
+                const currentIndex = chart.config.data.currentIndex;
+                if (currentIndex === undefined || currentIndex === -1) return;
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                const xPos = xAxis.getPixelForValue(currentIndex);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(xPos, yAxis.top);
+                ctx.lineTo(xPos, yAxis.bottom);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
+        Chart.register(backgroundHighlightPlugin, currentDayMarkerPlugin);
+
+        const checkboxes = document.querySelectorAll('.tf-checkbox');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                const checkedCount = document.querySelectorAll('.tf-checkbox:checked').length;
+                if (checkedCount < 2) {
+                    this.checked = true;
+                    alert("Kesişim hesaplanabilmesi için en az 2 periyot seçmelisiniz!");
+                    return;
+                }
+                if (seasonalDataCache) updateView();
+            });
+        });
+
+        async function fetchSeasonalityData() {
+            const confList = document.getElementById("confluenceList");
+            confList.innerHTML = `<p style='color: #787b86; padding-top:10px;'>${currentSymbol} verileri analiz ediliyor...</p>`;
+
+            try {
+                const res = await fetch(`/api/seasonality/${currentSymbol}`);
+                const response = await res.json();
+
+                if (!res.ok || response.error) throw new Error(response.error || "Sunucu hatası.");
+                const payloadData = response.data || response.Data;
+                if (!payloadData) throw new Error("Veri objesi bulunamadı.");
+
+                seasonalDataCache = {
+                    fiveYear: payloadData.fiveYear || payloadData.FiveYear,
+                    tenYear: payloadData.tenYear || payloadData.TenYear,
+                    twentyYear: payloadData.twentyYear || payloadData.TwentyYear
+                };
+
+                updateView();
+            } catch (e) {
+                confList.innerHTML = `<span style="color:#ef5350; font-size:15px; font-weight:bold;">Sistem Hatası: ${e.message}</span>`;
+            }
+        }
+
+        function updateView() {
+            const selectedTfs = Array.from(document.querySelectorAll('.tf-checkbox:checked')).map(cb => cb.value);
+            const labels = Object.keys(seasonalDataCache[selectedTfs[0]]).sort();
+
+            const now = new Date();
+            const todayStr = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+            let currentIndex = labels.indexOf(todayStr);
+            if (currentIndex === -1) {
+                for (let i = labels.length - 1; i >= 0; i--) {
+                    if (labels[i] < todayStr) {
+                        currentIndex = i; break;
+                    }
+                }
+            }
+
+            const pointRadii = labels.map((_, i) => i === currentIndex ? 3.5 : 0);
+            const confluences = calculateSmartDateRanges(selectedTfs, seasonalDataCache, labels);
+            activeConfluences = confluences;
+
+            activeConfluences = confluences;
+
+            // --- EKLENEN YENİ KONTROL: ŞU AN BÖLGEDE MİYİZ? ---
+            let isCurrentlyInConfluence = false;
+            let currentConfDetail = null;
+
+            for (const conf of activeConfluences) {
+                // Bugünün indeksi, fırsat aralığının başlangıç ve bitişi arasında mı?
+                if (currentIndex >= conf.startIndex && currentIndex <= conf.endIndex) {
+                    isCurrentlyInConfluence = true;
+                    currentConfDetail = conf;
+                    break;
+                }
+            }
+
+            const banner = document.getElementById("currentStatusBanner");
+            if (banner) {
+                if (isCurrentlyInConfluence) {
+                    const color = currentConfDetail.bias === "Bullish" ? "#26a69a" : "#ef5350";
+                    const bg = currentConfDetail.bias === "Bullish" ? "rgba(38, 166, 154, 0.15)" : "rgba(239, 83, 80, 0.15)";
+                    const turkceBias = currentConfDetail.bias === "Bullish" ? "YÜKSELİŞ" : "DÜŞÜŞ";
+                    banner.style.background = bg;
+                    banner.style.color = color;
+                    banner.style.border = `1px solid ${color}`;
+                    banner.innerHTML = `⚠️ DİKKAT: Şu an aktif bir ${turkceBias} fırsatı bölgesindeyiz!`;
+                } else {
+                    banner.style.background = "rgba(255,255,255,0.05)";
+                    banner.style.color = "#787b86";
+                    banner.style.border = "1px solid transparent";
+                    banner.innerHTML = `Şu an aktif bir istatistiksel bölgede değiliz.`;
+                }
+            }
+            // --- EKLENEN KISMIN SONU ---
+
+            const datasets = selectedTfs.map(tf => {
+                return {
+                    label: configMap[tf].label,
+                    data: labels.map(lbl => seasonalDataCache[tf][lbl]),
+                    borderColor: configMap[tf].color,
+                    borderWidth: 2, tension: 0.4, pointRadius: pointRadii,
+                    pointHoverRadius: 6, pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#FFFFFF', pointBorderWidth: 1
+                };
+            });
+
+            const isToggleOn = document.getElementById('confluenceToggle').checked;
+            renderChart(labels, datasets, isToggleOn ? confluences : [], currentIndex);
+            renderConfluences(confluences);
+        }
+
+        function calculateSmartDateRanges(selectedTfs, dataMap, keys) {
+            const N = keys.length;
+            const minDays = 8;
+            const minPct = 0.8;
+
+            const tfStates = {};
+
+            selectedTfs.forEach(tf => {
+                const rawData = keys.map(k => dataMap[tf][k]);
+                const states = new Array(N).fill(0);
+
+                if (N >= 15) {
+                    const smoothed = new Array(N).fill(0);
+                    const half = 3;
+                    for (let i = 0; i < N; i++) {
+                        let sum = 0;
+                        let count = 0;
+                        for (let j = Math.max(0, i - half); j <= Math.min(N - 1, i + half); j++) {
+                            sum += rawData[j];
+                            count++;
+                        }
+                        smoothed[i] = sum / count;
+                    }
+
+                    let currentTrend = smoothed[1] > smoothed[0] ? 1 : -1;
+                    let startIdx = 0;
+
+                    for (let i = 1; i < N; i++) {
+                        let diff = smoothed[i] - smoothed[i - 1];
+                        let trend = currentTrend;
+                        if (diff > 0) trend = 1;
+                        else if (diff < 0) trend = -1;
+
+                        if (trend !== currentTrend) {
+                            let peakIdx = i - 1;
+                            let duration = peakIdx - startIdx;
+                            let baseVal = Math.max(Math.abs(rawData[startIdx]), 0.0001);
+                            let movePct = (rawData[peakIdx] - rawData[startIdx]) / baseVal * 100;
+                            let isLargeEnough = (currentTrend === 1 && movePct >= minPct) || (currentTrend === -1 && movePct <= -minPct);
+
+                            if (duration >= minDays && isLargeEnough) {
+                                for (let j = startIdx; j <= peakIdx; j++) {
+                                    states[j] = currentTrend;
+                                }
+                            }
+                            currentTrend = trend;
+                            startIdx = peakIdx;
+                        }
+                    }
+
+                    let peakIdx = N - 1;
+                    let duration = peakIdx - startIdx;
+                    let baseVal = Math.max(Math.abs(rawData[startIdx]), 0.0001);
+                    let movePct = (rawData[peakIdx] - rawData[startIdx]) / baseVal * 100;
+                    let isLargeEnough = (currentTrend === 1 && movePct >= minPct) || (currentTrend === -1 && movePct <= -minPct);
+                    if (duration >= minDays && isLargeEnough) {
+                        for (let j = startIdx; j <= peakIdx; j++) {
+                            states[j] = currentTrend;
+                        }
+                    }
+                }
+                tfStates[tf] = states;
+            });
+
+            // 1. Adım: Çoklu vade oylaması
+            const combinedStates = new Array(N).fill(0);
+            for (let i = 0; i < N; i++) {
+                let upVotes = 0;
+                let downVotes = 0;
+                let countedLines = selectedTfs.length;
+
+                selectedTfs.forEach(tf => {
+                    if (tfStates[tf][i] === 1) upVotes++;
+                    else if (tfStates[tf][i] === -1) downVotes++;
+                });
+
+                if (countedLines > 0) {
+                    if (upVotes === countedLines) combinedStates[i] = 1;
+                    else if (downVotes === countedLines) combinedStates[i] = -1;
+                }
+            }
+
+            // 2. Adım: Ham segmentleri çıkar
+            let rawSegments = [];
+            let currentBoxState = 0;
+            let boxStart = 0;
+
+            for (let i = 0; i < N; i++) {
+                if (combinedStates[i] !== currentBoxState) {
+                    if (currentBoxState !== 0) {
+                        rawSegments.push({
+                            startKey: keys[boxStart],
+                            endKey: keys[i - 1],
+                            startIndex: boxStart,
+                            endIndex: i - 1,
+                            bias: currentBoxState === 1 ? "Bullish" : "Bearish"
+                        });
+                    }
+                    currentBoxState = combinedStates[i];
+                    boxStart = i;
+                }
+            }
+            if (currentBoxState !== 0) {
+                rawSegments.push({
+                    startKey: keys[boxStart],
+                    endKey: keys[N - 1],
+                    startIndex: boxStart,
+                    endIndex: N - 1,
+                    bias: currentBoxState === 1 ? "Bullish" : "Bearish"
+                });
+            }
+
+            // 3. Adım: GAP BRIDGING (Küçük boşlukları köprüleyip kutuları birleştirme)
+            let mergedSegments = [];
+            for (let seg of rawSegments) {
+                if (mergedSegments.length === 0) {
+                    mergedSegments.push(seg);
+                } else {
+                    let lastSeg = mergedSegments[mergedSegments.length - 1];
+                    let gap = seg.startIndex - lastSeg.endIndex;
+
+                    // Aynı yöndeyse ve aradaki kopukluk 12 günden azsa arayı birleştir
+                    if (lastSeg.bias === seg.bias && gap <= 12) {
+                        lastSeg.endIndex = seg.endIndex;
+                        lastSeg.endKey = seg.endKey;
+                    } else {
+                        mergedSegments.push(seg);
+                    }
+                }
+            }
+
+            // 4. Adım: Final filtreleme
+            let finalConfluences = [];
+            for (let seg of mergedSegments) {
+                let duration = seg.endIndex - seg.startIndex;
+                if (duration >= 10) {
+                    let detailsArr = selectedTfs.map(tf => `${configMap[tf].short}`);
+                    seg.details = detailsArr.join(", ");
+                    finalConfluences.push(seg);
+                }
+            }
+
+            return finalConfluences;
+        }
+
+        function formatTurkishDate(dateStr) {
+            const parts = dateStr.split("-");
+            const months = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+            return `${parseInt(parts[1])} ${months[parseInt(parts[0]) - 1]}`;
+        }
+
+        function renderChart(labels, datasets, confluences, currentIndex) {
+            const ctx = document.getElementById("seasonalityChart").getContext("2d");
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets, confluences: confluences, currentIndex: currentIndex },
+                options: {
+                    layout: {
+                        padding: { right: 20 }
+                    },
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: %${ctx.parsed.y}` } } },
+                    scales: {
+                        x: { grid: { color: '#2a2e39' }, ticks: { maxTicksLimit: 12, callback: function (val, index) { return formatTurkishDate(labels[index]); } } },
+                        y: { grid: { color: '#2a2e39' }, title: { display: true, text: 'YTD Getiri (%)', color: '#787b86' } }
+                    }
+                }
+            });
+        }
+
+        function renderConfluences(confluences) {
+            const list = document.getElementById("confluenceList");
+            list.innerHTML = "";
+            if (confluences.length === 0) {
+                list.innerHTML = "<p style='color:#787b86; padding-top:10px;'>Net bir algoritmik trend kesişimi bulunamadı.</p>";
+                return;
+            }
+            confluences.forEach(conf => {
+                const colorClass = conf.bias === "Bullish" ? "Bullish" : "Bearish";
+                const icon = conf.bias === "Bullish" ? "📈" : "📉";
+
+                const turkceBias = conf.bias === "Bullish" ? "Yükseliş" : "Düşüş";
+
+                const dateText = `${formatTurkishDate(conf.startKey)} - ${formatTurkishDate(conf.endKey)}`;
+
+                list.innerHTML += `
+                        <div class="conf-item ${colorClass}">
+                            <strong>${icon} ${dateText} (${turkceBias})</strong>
+                            <span>Net Değişimler:<br>${conf.details}</span>
+                        </div>`;
+            });
+        }
+
+        // --- TAKILMAYI BİTİREN ANINDA AÇ/KAPA (TOGGLE) MANTIĞI ---
+        const confluenceToggle = document.getElementById('confluenceToggle');
+
+        if (confluenceToggle) {
+            confluenceToggle.addEventListener('change', function () {
+                const isChecked = this.checked;
+                const grid = document.querySelector('.content-grid');
+
+                if (isChecked) {
+                    grid.classList.remove('hide-confluence');
+                    if (chartInstance) {
+                        chartInstance.data.confluences = activeConfluences;
+                        chartInstance.update();
+                    }
+                } else {
+                    grid.classList.add('hide-confluence');
+                    if (chartInstance) {
+                        chartInstance.data.confluences = [];
+                        chartInstance.update();
+                    }
+                }
+
+                // CSS ve Grid değişikliği anında algılansın diye
+                if (chartInstance) {
+                    chartInstance.resize();
+                }
+            });
+        }
+
+        fetchSeasonalityData();
+    </script>
+</body>
+</html>

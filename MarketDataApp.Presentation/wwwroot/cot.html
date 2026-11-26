@@ -1,0 +1,810 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <!-- TradingView Lightweight Charts Sabit Sürüm -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <title>COT Kurumsal Analiz Paneli</title>
+    <style>
+        html {
+            box-sizing: border-box;
+        }
+
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+
+        /* 1. BODY */
+        body {
+            margin: 0;
+            padding: 15px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #131722;
+            color: #d1d4dc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 2. HEADER TAM EKRAN VE FİLTRE DÜZENİ */
+        .header {
+            width: 100%;
+            margin: 0 0 15px 0;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+            .header h2 {
+                margin: 0 0 5px 0;
+                font-size: 22px;
+                font-weight: 600;
+            }
+
+            .header span {
+                color: rgba(255, 255, 255, 0.5);
+                font-size: 13px;
+            }
+
+        /* FİLTRE BUTONLARI */
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            background: #1e222d;
+            padding: 5px;
+            border-radius: 8px;
+            border: 1px solid #363c4e;
+        }
+
+        .filter-btn {
+            background: transparent;
+            color: #787b86;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+            .filter-btn:hover {
+                color: #d1d4dc;
+            }
+
+            .filter-btn.active {
+                background: #2962ff;
+                color: #fff;
+            }
+
+        /* 3. KARTLARIN OLDUĞU ALAN */
+        .features {
+            width: 100%;
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            align-content: start;
+            padding-bottom: 30px;
+            padding-right: 10px;
+        }
+
+            .features::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .features::-webkit-scrollbar-thumb {
+                background: #2a2e39;
+                border-radius: 4px;
+            }
+
+        /* TRADINGVIEW TARZI SOL ÜST GÖSTERGE (LEGEND) */
+        .chart-legend {
+            position: absolute;
+            top: 12px;
+            left: 15px;
+            z-index: 10;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        }
+
+        .legend-row-main {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .legend-val {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .legend-change {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* KART TASARIMI VE PARLAMA EFEKTLERİ */
+        .feature {
+            --x-px: calc(var(--x) * 1px);
+            --y-px: calc(var(--y) * 1px);
+            --border: 1.5px;
+            background: rgba(255, 255, 255, 0.125);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            min-height: 275px;
+            position: relative;
+            cursor: pointer;
+        }
+
+            .feature.top-strong {
+                background: #26a69a !important;
+            }
+
+            .feature.top-weak {
+                background: #ef5350 !important;
+            }
+
+            .feature:before, .feature:after {
+                content: "";
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 100%;
+                inset: 0px;
+                border-radius: inherit;
+                background: radial-gradient(800px circle at var(--x-px) var(--y-px), rgba(255, 255, 255, 0.3), transparent 40%);
+            }
+
+            .feature:before {
+                z-index: 1;
+            }
+
+            .feature:after {
+                opacity: 0;
+                z-index: 2;
+                transition: opacity 0.4s ease;
+            }
+
+            .feature:hover:after {
+                opacity: 1;
+            }
+
+        .feature-content {
+            background: rgb(19, 19, 21);
+            border-radius: inherit;
+            color: white;
+            text-decoration: none;
+            z-index: 1;
+            position: absolute;
+            inset: var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+        }
+
+        .card-top {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+        }
+
+            .card-top strong {
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+        /* ROZETLER */
+        .status-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+            .status-tag.strong {
+                background: rgba(38, 166, 154, 0.2);
+                color: #26a69a;
+                border: 1px solid #26a69a;
+            }
+
+            .status-tag.weak {
+                background: rgba(239, 83, 80, 0.2);
+                color: #ef5350;
+                border: 1px solid #ef5350;
+            }
+
+        .net-badge {
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: #d1d4dc;
+        }
+
+        .metric-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 12px 0 6px 0;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .bar-bg {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .bullish {
+            color: #26a69a;
+        }
+
+        .bearish {
+            color: #ef5350;
+        }
+
+        .neutral {
+            color: #787b86;
+        }
+
+        /* MODAL TASARIMI */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #1e222d;
+            border: 1px solid #363c4e;
+            border-radius: 12px;
+            width: 800px;
+            max-width: 95%;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .modal-header h3 {
+                margin: 0;
+                color: #fff;
+                font-size: 18px;
+            }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #787b86;
+            font-size: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            .close-btn:hover {
+                color: #ef5350;
+            }
+
+        #chartContainer {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .loading-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #2962ff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* GRAFİK İÇİ FİLTRE BUTONLARI */
+        .chart-btn-group {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid #363c4e;
+        }
+
+        .chart-btn {
+            background: transparent;
+            color: #787b86;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+            .chart-btn:hover {
+                color: #d1d4dc;
+            }
+
+            .chart-btn.active {
+                background: #2962ff;
+                color: #fff;
+            }
+    </style>
+</head>
+<body>
+    <div class="nav-wrapper-container">
+        <div class="nav-wrapper">
+            <nav class="main-nav">
+                <a href="/index.html">Canlı Grafik</a>
+                <a href="/cot.html" class="active">COT Analizi</a>
+                <a href="/seasonality.html">Mevsimsellik</a>
+                <a href="/squeeze.html">Sıkışma</a>
+                <a href="/calendar.html">Ekonomik Takvim</a>
+                <a href="/ai-agent.html">AI Makro Ajanı</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="header">
+        <div>
+            <h2>COT Kurumsal Pozisyonları</h2>
+            <span>Commitment of Traders Raporu 6A / 12A / 24A / 48A Periyotluk Hareketler</span>
+        </div>
+
+        <div class="filter-group" style="margin-left: auto; background: rgba(41, 98, 255, 0.1); border-color: #2962ff;">
+            <span class="filter-label" style="color: #2962ff;">⏳ ZAMAN MAKİNESİ:</span>
+            <input type="range" id="timeMachine" min="0" max="52" value="0" step="1" style="cursor: pointer; accent-color: #2962ff;">
+            <span id="timeMachineLabel" style="font-size: 12px; font-weight: bold; color: #fff; width: 140px; text-align: center;">Güncel Hafta</span>
+        </div>
+
+        <div class="filter-group">
+            <button class="filter-btn active" data-period="none" onclick="changePeriodFilter('none')">Filtre Yok</button>
+            <button class="filter-btn" data-period="sixMonth" onclick="changePeriodFilter('sixMonth')">6 Aylık</button>
+            <button class="filter-btn" data-period="oneYear" onclick="changePeriodFilter('oneYear')">12 Aylık</button>
+            <button class="filter-btn" data-period="twoYear" onclick="changePeriodFilter('twoYear')">24 Aylık</button>
+            <button class="filter-btn" data-period="fourYear" onclick="changePeriodFilter('fourYear')">48 Aylık</button>
+        </div>
+    </div>
+
+    <div class="features" id="featuresContainer"></div>
+
+    <!-- GRAFİK MODALI -->
+    <div class="modal-overlay" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Kurumsal Net Pozisyon Geçmişi</h3>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="chart-btn-group">
+                        <button class="chart-btn" data-range="6m" onclick="filterChartData('6m')">6 Ay</button>
+                        <button class="chart-btn" data-range="12m" onclick="filterChartData('12m')">12 Ay</button>
+                        <button class="chart-btn" data-range="24m" onclick="filterChartData('24m')">24 Ay</button>
+                        <button class="chart-btn active" data-range="48m" onclick="filterChartData('48m')">48 Ay</button>
+                        <button class="chart-btn" data-range="all" onclick="filterChartData('all')">Tümü</button>
+                    </div>
+                    <button class="close-btn" onclick="closeChartModal()">&times;</button>
+                </div>
+            </div>
+            <div id="loadingText" class="loading-text">Veriler Yükleniyor...</div>
+            <div id="chartContainer">
+                <div id="chartLegend" class="chart-legend">
+                    <div class="legend-row-main">
+                        <span id="legendNet" class="legend-val">Net: --</span>
+                        <span id="legendChange" class="legend-change">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GENEL DEĞİŞKENLER ---
+        let cotDataCache = [];
+        let activePeriod = "none";
+        let currentWeeksAgo = 0;
+
+        let chart = null;
+        let lineSeries = null;
+        let fullChartData = [];
+
+        const nameMapping = {
+            "EUR": "EUR - Euro FX", "GBP": "GBP - British Pound", "JPY": "JPY - Japanese Yen",
+            "AUD": "AUD - Australian Dollar", "NZD": "NZD - New Zealand Dollar",
+            "CAD": "CAD - Canadian Dollar", "CHF": "CHF - Swiss Franc", "USD": "USD - US Dollar Index",
+            "ZAR": "ZAR - South African Rand", "MXN": "MXN - Mexican Peso", "BRL": "BRL - Brazilian Real",
+            "CL": "CL - Crude Oil (WTI)", "GC": "GC - Gold", "SI": "SI - Silver",
+            "ZB": "ZB - 30Y Treasury Bond", "ZN": "ZN - 10Y Treasury Note", "ZF": "ZF - 5Y Treasury Note"
+        };
+
+        const groupsDefinition = [
+            { id: "FX", title: "🌍 Forex (Döviz Piyasası)" },
+            { id: "Commodity", title: "🛢️ Emtia Piyasası" },
+            { id: "Bond", title: "📜 Tahvil Piyasası (Treasuries)" }
+        ];
+
+        function getColor(score) {
+            if (score >= 55) return '#26a69a';
+            if (score <= 45) return '#ef5350';
+            return '#787b86';
+        }
+
+        function getBiasClass(score) {
+            if (score >= 55) return 'bullish';
+            if (score <= 45) return 'bearish';
+            return 'neutral';
+        }
+
+        function changePeriodFilter(period) {
+            activePeriod = period;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.period === period);
+            });
+            renderCards();
+        }
+
+        document.getElementById('timeMachine').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            const label = document.getElementById('timeMachineLabel');
+            label.innerText = val === 0 ? "Güncel Hafta" : `${val} Hafta Önce`;
+        });
+
+        document.getElementById('timeMachine').addEventListener('change', (e) => {
+            currentWeeksAgo = parseInt(e.target.value);
+            initCotBoard();
+        });
+
+        function renderCards() {
+            const container = document.getElementById("featuresContainer");
+            container.innerHTML = "";
+
+            if (cotDataCache.length === 0) return;
+
+            groupsDefinition.forEach(groupConfig => {
+                let groupData = cotDataCache.filter(d => d.group === groupConfig.id);
+                if (groupData.length === 0) return;
+
+                if (activePeriod !== "none") {
+                    groupData.sort((a, b) => {
+                        let diff = b[activePeriod].indexScore - a[activePeriod].indexScore;
+                        if (diff !== 0) return diff;
+                        if (activePeriod === "sixMonth") {
+                            let diff12 = b["oneYear"].indexScore - a["oneYear"].indexScore;
+                            if (diff12 !== 0) return diff12;
+                            return b["twoYear"].indexScore - a["twoYear"].indexScore;
+                        }
+                        else if (activePeriod === "oneYear") {
+                            let diff24 = b["twoYear"].indexScore - a["twoYear"].indexScore;
+                            if (diff24 !== 0) return diff24;
+                            return b["sixMonth"].indexScore - a["sixMonth"].indexScore;
+                        }
+                        else if (activePeriod === "twoYear") {
+                            let diff48 = b["fourYear"].indexScore - a["fourYear"].indexScore;
+                            if (diff48 !== 0) return diff48;
+                            return b["oneYear"].indexScore - a["oneYear"].indexScore;
+                        }
+                        else if (activePeriod === "fourYear") {
+                            let diff24 = b["twoYear"].indexScore - a["twoYear"].indexScore;
+                            if (diff24 !== 0) return diff24;
+                            return b["oneYear"].indexScore - a["oneYear"].indexScore;
+                        }
+                        return 0;
+                    });
+                }
+
+                let strongestCurrency = activePeriod !== "none" ? groupData[0].currency : null;
+                let weakestCurrency = activePeriod !== "none" ? groupData[groupData.length - 1].currency : null;
+
+                const headerDiv = document.createElement("div");
+                headerDiv.style.gridColumn = "1 / -1";
+                headerDiv.innerHTML = `<h3 style="color:#fff; border-bottom:1px solid #363c4e; padding-bottom:8px; margin-top:20px; margin-bottom:5px;">${groupConfig.title}</h3>`;
+                container.appendChild(headerDiv);
+
+                groupData.forEach(item => {
+                    const isStrongest = item.currency === strongestCurrency;
+                    const isWeakest = item.currency === weakestCurrency;
+                    const displayName = nameMapping[item.currency] || item.currency;
+
+                    const featureDiv = document.createElement("div");
+                    featureDiv.className = "feature";
+                    featureDiv.onclick = () => openChartModal(item.currency, displayName);
+
+                    if (isStrongest) featureDiv.classList.add("top-strong");
+                    if (isWeakest) featureDiv.classList.add("top-weak");
+
+                    let changeValue = item.weeklyChange || 0;
+                    let changeSign = changeValue > 0 ? "+" : "";
+                    let changeColor = changeValue > 0 ? "#26a69a" : (changeValue < 0 ? "#ef5350" : "#787b86");
+
+                    let changeHtml = changeValue !== 0
+                        ? `<span style="font-size: 12px; color: #d1d4dc;">Haftalık Değişim: <span style="color: ${changeColor}; font-weight: 700;">(${changeSign}${changeValue.toLocaleString()})</span></span>`
+                        : `<span style="font-size: 12px; color: #d1d4dc;">Haftalık Değişim: <span style="color: #d1d4dc; font-weight: 700;">(0)</span></span>`;
+
+                    let statusBadge = "";
+                    if (isStrongest) statusBadge = `<span class="status-tag strong">🔥 EN GÜÇLÜ</span>`;
+                    if (isWeakest) statusBadge = `<span class="status-tag weak">❄️ EN ZAYIF</span>`;
+
+                    const fourYearScore = item.fourYear ? item.fourYear.indexScore : 0;
+                    const fourYearBias = item.fourYear ? item.fourYear.bias : "-";
+
+                    featureDiv.innerHTML = `
+                            <div class="feature-content">
+                                <div class="card-top">
+                                    <strong>${displayName} ${statusBadge}</strong>
+                                    <div style="display:flex; align-items:center; width: 100%; justify-content: space-between;">
+                                        <span class="net-badge">Net: ${item.currentNetPosition.toLocaleString()}</span>
+                                        ${changeHtml}
+                                    </div>
+                                </div>
+
+                                <div class="metric-list">
+                                    <div class="metric-item">
+                                        <div class="metric-labels">
+                                            <span>6 Aylık Periyot (%${item.sixMonth.indexScore})</span>
+                                            <span class="${getBiasClass(item.sixMonth.indexScore)}">${item.sixMonth.bias}</span>
+                                        </div>
+                                        <div class="bar-bg"><div class="bar-fill" style="width: ${item.sixMonth.indexScore}%; background: ${getColor(item.sixMonth.indexScore)};"></div></div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-labels">
+                                            <span>12 Aylık Periyot (%${item.oneYear.indexScore})</span>
+                                            <span class="${getBiasClass(item.oneYear.indexScore)}">${item.oneYear.bias}</span>
+                                        </div>
+                                        <div class="bar-bg"><div class="bar-fill" style="width: ${item.oneYear.indexScore}%; background: ${getColor(item.oneYear.indexScore)};"></div></div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-labels">
+                                            <span>24 Aylık Periyot (%${item.twoYear.indexScore})</span>
+                                            <span class="${getBiasClass(item.twoYear.indexScore)}">${item.twoYear.bias}</span>
+                                        </div>
+                                        <div class="bar-bg"><div class="bar-fill" style="width: ${item.twoYear.indexScore}%; background: ${getColor(item.twoYear.indexScore)};"></div></div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-labels">
+                                            <span>48 Aylık Periyot (%${fourYearScore})</span>
+                                            <span class="${getBiasClass(fourYearScore)}">${fourYearBias}</span>
+                                        </div>
+                                        <div class="bar-bg"><div class="bar-fill" style="width: ${fourYearScore}%; background: ${getColor(fourYearScore)};"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    container.appendChild(featureDiv);
+                });
+            });
+
+            setupPointerGlow();
+        }
+
+        async function initCotBoard() {
+            const container = document.getElementById("featuresContainer");
+            try {
+                const res = await fetch(`/api/cot/overview?weeksAgo=${currentWeeksAgo}`);
+                cotDataCache = await res.json();
+
+                if (cotDataCache.length > 0) {
+                    const reportDateStr = new Date(cotDataCache[0].reportDate).toLocaleDateString('tr-TR');
+                    const label = document.getElementById('timeMachineLabel');
+                    label.innerText = currentWeeksAgo === 0
+                        ? `Güncel (${reportDateStr})`
+                        : `${currentWeeksAgo} Hf Önce (${reportDateStr})`;
+                }
+                renderCards();
+            } catch (err) {
+                container.innerHTML = `<p style="color:#ef5350;">Veri yüklenemedi: ${err.message}</p>`;
+            }
+        }
+
+        function setupPointerGlow() {
+            const featuresEl = document.querySelector(".features");
+            const featureEls = document.querySelectorAll(".feature");
+
+            featuresEl.addEventListener("pointermove", (ev) => {
+                featureEls.forEach((featureEl) => {
+                    const rect = featureEl.getBoundingClientRect();
+                    featureEl.style.setProperty("--x", ev.clientX - rect.left);
+                    featureEl.style.setProperty("--y", ev.clientY - rect.top);
+                });
+            });
+        }
+
+        // --- TRADINGVIEW GRAFİK YÖNETİMİ MANTIKLARI ---
+        async function openChartModal(currencyCode, displayName) {
+            document.getElementById('chartModal').style.display = 'flex';
+            document.getElementById('modalTitle').innerText = `${displayName} - Kurumsal Net Pozisyonlar`;
+
+            const loadingText = document.getElementById('loadingText');
+            const container = document.getElementById('chartContainer');
+            const legendEl = document.getElementById('chartLegend');
+
+            loadingText.style.display = 'block';
+            legendEl.style.display = 'none';
+            container.style.visibility = 'hidden';
+
+            await new Promise(r => setTimeout(r, 100));
+
+            if (chart) {
+                chart.remove();
+                chart = null;
+            }
+
+            const rect = container.getBoundingClientRect();
+
+            chart = LightweightCharts.createChart(container, {
+                width: rect.width || 800,
+                height: rect.height || 400,
+                layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: 'rgba(255, 255, 255, 0.05)' }, horzLines: { color: 'rgba(255, 255, 255, 0.05)' } },
+                rightPriceScale: { borderVisible: false },
+                timeScale: { borderVisible: false, fixLeftEdge: true, fixRightEdge: true },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            });
+
+            lineSeries = chart.addLineSeries({
+                color: '#2962ff',
+                lineWidth: 2,
+                crosshairMarkerVisible: true,
+                crosshairMarkerRadius: 5,
+            });
+
+            new ResizeObserver(entries => {
+                if (entries.length === 0 || entries[0].target !== container) return;
+                const newRect = entries[0].contentRect;
+                chart.applyOptions({ height: newRect.height, width: newRect.width });
+            }).observe(container);
+
+            try {
+                const response = await fetch(`/api/cot/history/${currencyCode}`);
+                if (!response.ok) throw new Error(`API Hatası`);
+
+                const rawHistoryData = await response.json();
+                const seenDates = new Set();
+                fullChartData = [];
+
+                rawHistoryData.forEach(d => {
+                    let t = d.time || d.Time;
+                    let v = d.value !== undefined ? d.value : d.Value;
+
+                    if (t && t.includes('T')) t = t.split('T')[0];
+
+                    if (t && !seenDates.has(t)) {
+                        seenDates.add(t);
+                        fullChartData.push({ time: t, value: Number(v) });
+                    }
+                });
+
+                if (fullChartData.length === 0) throw new Error("Veri bulunamadı.");
+
+                fullChartData.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+                for (let i = 0; i < fullChartData.length; i++) {
+                    if (i === 0) {
+                        fullChartData[i].change = 0;
+                    } else {
+                        fullChartData[i].change = fullChartData[i].value - fullChartData[i - 1].value;
+                    }
+                }
+
+                function updateLegend(item) {
+                    if (!item) return;
+                    const sign = item.change > 0 ? "+" : "";
+                    const color = item.change > 0 ? "#26a69a" : (item.change < 0 ? "#ef5350" : "#787b86");
+
+                    document.getElementById('legendNet').innerText = `Net: ${item.value.toLocaleString()}`;
+                    document.getElementById('legendChange').innerHTML = `Değişim: <span style="color:${color};">(${sign}${item.change.toLocaleString()})</span>`;
+                }
+
+                chart.subscribeCrosshairMove(param => {
+                    if (!param || !param.time) {
+                        updateLegend(fullChartData[fullChartData.length - 1]);
+                        return;
+                    }
+                    const currentItem = fullChartData.find(d => d.time === param.time);
+                    if (currentItem) updateLegend(currentItem);
+                });
+
+                filterChartData('48m');
+                updateLegend(fullChartData[fullChartData.length - 1]);
+
+                loadingText.style.display = 'none';
+                legendEl.style.display = 'flex';
+                container.style.visibility = 'visible';
+
+            } catch (err) {
+                loadingText.style.display = 'block';
+                loadingText.innerText = "Grafik çizilemedi: " + err.message;
+            }
+        }
+
+        function filterChartData(range) {
+            if (!fullChartData || fullChartData.length === 0) return;
+
+            document.querySelectorAll('.chart-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.range === range);
+            });
+
+            let sliceCount = fullChartData.length;
+
+            if (range === '6m') sliceCount = 26;
+            else if (range === '12m') sliceCount = 52;
+            else if (range === '24m') sliceCount = 104;
+            else if (range === '48m') sliceCount = 208;
+
+            const dataToDisplay = fullChartData.slice(-sliceCount);
+
+            lineSeries.setData(dataToDisplay);
+            chart.timeScale().fitContent();
+        }
+
+        function closeChartModal() {
+            document.getElementById('chartModal').style.display = 'none';
+        }
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('chartModal');
+            if (event.target === modal) closeChartModal();
+        }
+
+        // SAYFAYI BAŞLAT
+        initCotBoard();
+    </script>
+</body>
+</html>
