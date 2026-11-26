@@ -106,7 +106,7 @@ MarketDataAnalytics/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/MarketDataAnalytics.git
+   git clone https://github.com/tarikthedev/MarketDataAnalytics.git
    cd MarketDataAnalytics
    ```
 
