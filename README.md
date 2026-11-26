@@ -168,9 +168,4 @@ MarketDataAnalytics/
 **Tarık Kocaçiftçi**  
 * Kocaeli Üniversitesi – Yazılım Mühendisliği  
 * **E-posta:** [tarikthedev@gmail.com](mailto:tarikthedev@gmail.com)  
-* **GitHub:** [github.com/tarikthedev](https://github.com/tarikthedev)  
-
----
-
-## 📄 Lisans
-Bu proje [MIT Lisansı](LICENSE) kapsamında açık kaynak olarak paylaşılmıştır.
+* **GitHub:** [github.com/tarikthedev](https://github.com/tarikthedev)
