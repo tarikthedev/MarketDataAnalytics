@@ -259,7 +259,7 @@
 
         <!-- 1W VE 1M EKLENDİ -->
         <select id="intervalSelect" class="tv-select">
-            <option value="1m" selected>1m</option>
+            <option value="1m">1m</option>
             <option value="2m">2m</option>
             <option value="3m">3m</option>
             <option value="5m">5m</option>
@@ -270,7 +270,7 @@
             <option value="2h">2h</option>
             <option value="4h">4h</option>
             <option value="8h">8h</option>
-            <option value="1d">1D</option>
+            <option value="1d" selected>1D</option>
             <option value="1w">1W</option>
             <option value="1M">1M</option>
         </select>
@@ -307,7 +307,7 @@
         let currentCandle = null;
 
         let currentSymbol = "EURUSD";
-        let currentInterval = "1m";
+        let currentInterval = "1d";
         let currentTimezone = "America/New_York";
         let currentPrecision = 5;
 
@@ -609,15 +609,16 @@
             startRestLivePolling(symbol);
         }
 
-        // Deriv WebSocket erişilemezse kesintisiz canlı güncelleme sağlayan alternatif yoklayıcı
+        // Canlı fiyat güncelleyici — backend'den kısa aralıklarla son mumu çeker
         function startRestLivePolling(symbol) {
             if (livePollingTimer) clearInterval(livePollingTimer);
             setConnectedStatus();
-            document.getElementById("statusText").innerText = "Canlı (Yedek Veri)";
+            document.getElementById("statusText").innerText = "Canlı";
 
             livePollingTimer = setInterval(async () => {
                 if (currentSymbol !== symbol) return;
                 try {
+                    // Her 10 saniyede son 2 mumu çek (Yahoo Finance 15dk gecikmeli ama en güncel veri bu)
                     const url = `/api/market/candles?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(currentInterval)}&limit=2`;
                     const res = await fetch(url);
                     if (!res.ok) return;
@@ -635,10 +636,12 @@
                         candleSeries.update(candle);
                         updateOhlcLegend(candle);
                         setConnectedStatus();
-                        document.getElementById("statusText").innerText = "Canlı";
+                        // Yahoo Finance ücretsiz API forex verilerini 15dk gecikmeli döndürür
+                        const delayNote = ["1m","5m","15m"].includes(currentInterval) ? " (15dk gecikmeli)" : "";
+                        document.getElementById("statusText").innerText = "Canlı" + delayNote;
                     }
                 } catch { }
-            }, 4000);
+            }, 10000); // 10 saniyede bir güncelle
         }
 
         async function startMarket() {
